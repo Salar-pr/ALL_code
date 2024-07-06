@@ -6,7 +6,8 @@ def create_X_O_table(jadval):
     for i in range(0, len(jadval), 3):
         
 
-        print(jadval[i:i + 3])
+        print(str(jadval[i:i + 3]).replace('\'',''))
+
     return jadval 
 
 create_X_O_table(jadval)
