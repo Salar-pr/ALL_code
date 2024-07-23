@@ -1,0 +1,299 @@
+import tkinter as tk
+from tkinter import messagebox, filedialog, ttk
+import mysql.connector
+
+# اتصال به دیتابیس
+mydb = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="12345678",
+    database="tel_book"
+)
+mycursor = mydb.cursor()
+
+# طراحی پنجره اصلی
+win = tk.Tk()
+win.title("تلفن‌نامه")
+win.geometry('800x600')
+win.configure(bg="#333333")
+win.resizable(0, 0)
+
+# طراحی فریم‌ها
+frm_all = tk.Frame(win, relief=tk.GROOVE, borderwidth=5, bg="#333333")
+frm_insert = tk.Frame(frm_all, relief=tk.GROOVE, borderwidth=5, bg="#444444")
+frm_comp = tk.Frame(frm_all, relief=tk.GROOVE, borderwidth=5, bg="#444444")
+
+# عنوان بخش مشخصات فردی
+label_title = tk.Label(
+    frm_insert,
+    text="مشخصات فردی",
+    foreground="#fff",
+    background="black",
+    font=('bold', 25),
+    width=25
+)
+
+# بخش ورودی مشخصات فردی
+def create_input_field(parent, label_text):
+    frame = tk.Frame(parent, relief=tk.GROOVE, borderwidth=5, bg="#444444")
+    label = tk.Label(
+        frame,
+        text=label_text,
+        foreground="black",
+        background="#fff",
+        font=('bold', 10),
+        width=15
+    )
+    entry = tk.Entry(frame, font=25)
+    label.pack(side="left", padx=5, pady=5)
+    entry.pack(side="right", padx=5, pady=5)
+    frame.pack(fill="x", padx=5, pady=5)
+    return entry
+
+first_name_ent = create_input_field(frm_insert, "نام:")
+last_name_ent = create_input_field(frm_insert, "نام خانوادگی:")
+number_ent = create_input_field(frm_insert, "شماره تلفن:")
+email_ent = create_input_field(frm_insert, "ایمیل:")
+
+# عنوان بخش مشخصات سازمانی
+label_comp = tk.Label(
+    frm_comp,
+    text="مشخصات سازمانی",
+    foreground="#fff",
+    background="black",
+    font=('bold', 25),
+    width=25
+)
+
+# بخش ورودی مشخصات سازمانی
+comp_name_ent = create_input_field(frm_comp, "نام سازمان:")
+comp_tel_ent = create_input_field(frm_comp, "شماره سازمان:")
+address_ent = create_input_field(frm_comp, "محل سازمان:")
+comp_email_ent = create_input_field(frm_comp, "ایمیل سازمان:")
+site_ent = create_input_field(frm_comp, "سایت سازمان:")
+local_tel_ent = create_input_field(frm_comp, "شماره داخلی:")
+CEO_ent = create_input_field(frm_comp, "مدیر شرکت:")
+postal_code_ent = create_input_field(frm_comp, "کد پستی:")
+
+# تعریف کلاس عملیات‌ها
+class Operation:
+    @staticmethod
+    def insert():
+        # دریافت مقادیر ورودی
+        first_name_val = first_name_ent.get()
+        last_name_val = last_name_ent.get()
+        number_val = number_ent.get()
+        email_val = email_ent.get()
+        comp_name_val = comp_name_ent.get()
+        comp_tel_val = comp_tel_ent.get()
+        comp_address_val = address_ent.get()
+        comp_email_val = comp_email_ent.get()
+        comp_site_val = site_ent.get()
+        comp_local_tel_val = local_tel_ent.get()
+        CEO_val = CEO_ent.get()
+        comp_postal_code_val = postal_code_ent.get()
+
+        # اعتبارسنجی ورودی‌ها
+        if not (first_name_val and last_name_val and number_val and email_val and
+                comp_name_val and comp_tel_val and comp_email_val and comp_address_val and
+                comp_site_val and comp_local_tel_val and CEO_val and comp_postal_code_val):
+            messagebox.showerror("خطا", "هیچ کدام از فیلدها نباید خالی باشد")
+            return
+
+        if any(val.isdigit() for val in [first_name_val, last_name_val, comp_name_val, CEO_val]):
+            messagebox.showerror("خطا", "در فیلدهای نام و نام خانوادگی نباید عدد وارد شود")
+            return
+
+        if not any(comp_address_val.count(x) for x in [',']):
+            messagebox.showerror("خطا", "آدرس باید شامل جداکننده ',' باشد")
+            return
+
+        if not any(comp_site_val.endswith(suffix) for suffix in ['.ir', '.com', '.org']):
+            messagebox.showerror("خطا", "پسوند سایت معتبر نیست")
+            return
+
+        if '@' not in email_val or '.' not in email_val or '@' not in comp_email_val or '.' not in comp_email_val:
+            messagebox.showerror("خطا", "ایمیل وارد شده صحیح نمی‌باشد")
+            return
+
+        if not (number_val.isdigit() and comp_local_tel_val.isdigit() and comp_postal_code_val.isdigit()):
+            messagebox.showerror("خطا", "فیلدهای عددی باید داده عددی داشته باشند")
+            return
+
+        # دریافت فایل عکس
+        image_val = filedialog.askopenfilename(
+            initialdir="/", title="Select file",
+            filetypes=[("Image files", "*.png;*.jpg;*.jpeg")]
+        )
+
+        # درج اطلاعات در دیتابیس
+        mycursor.execute("""
+            INSERT INTO insert_v (first_name, last_name, number_tel, email, image)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (first_name_val, last_name_val, number_val, email_val, image_val))
+
+        mycursor.execute("""
+            INSERT INTO company (name_company, number_tel_company, address, email_company, site_company, local_tel_company, CEO_company, postal_code)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (comp_name_val, comp_tel_val, comp_address_val, comp_email_val, comp_site_val, comp_local_tel_val, CEO_val, comp_postal_code_val))
+
+        mydb.commit()
+
+        messagebox.showinfo("موفقیت", "عملیات با موفقیت انجام شد")
+
+        # پاکسازی مقادیر ورودی
+        for entry in [first_name_ent, last_name_ent, number_ent, email_ent,
+                      comp_name_ent, comp_tel_ent, address_ent, comp_email_ent,
+                      site_ent, local_tel_ent, CEO_ent, postal_code_ent]:
+            entry.delete(0, tk.END)
+
+    @staticmethod
+    def show_data():
+        show_window = tk.Toplevel(win)
+        show_window.title("نمایش اطلاعات")
+        show_window.geometry('600x400')
+        show_window.configure(bg="#444444")
+
+        frm_show = tk.Frame(show_window, relief=tk.GROOVE, borderwidth=5, bg="#fff")
+        frm_show.pack(fill=tk.BOTH, expand=True)
+
+        tree = ttk.Treeview(frm_show, columns=(
+            "column1", "column2", "column3", "column4", "column5", "column6"), show='headings')
+        tree.heading("column1", text="کد کلیدی")
+        tree.heading("column2", text="نام")
+        tree.heading("column3", text="نام خانوادگی")
+        tree.heading("column4", text="شماره")
+        tree.heading("column5", text="ایمیل")
+        tree.heading("column6", text="عکس")
+        mycursor.execute("SELECT * FROM insert_v")
+        rows = mycursor.fetchall()
+        for row in rows:
+            tree.insert("", "end", values=row)
+        tree.pack(fill=tk.BOTH, expand=True)
+
+        v_scrollbar = ttk.Scrollbar(frm_show, orient=tk.VERTICAL, command=tree.yview)
+        tree.config(yscroll=v_scrollbar.set)
+        v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        h_scrollbar = ttk.Scrollbar(frm_show, orient=tk.HORIZONTAL, command=tree.xview)
+        tree.config(xscroll=h_scrollbar.set)
+        h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        tree.pack(fill=tk.BOTH, expand=True)
+
+    @staticmethod
+    def search():
+        search_window = tk.Toplevel(win)
+        search_window.title("جستجو")
+        search_window.geometry('400x300')
+        search_window.configure(bg="#444444")
+
+        frm_search = tk.Frame(search_window, relief=tk.GROOVE, borderwidth=5, bg="#444444")
+        frm_search.pack(pady=20)
+
+        label_search = tk.Label(
+            frm_search,
+            text="جستجو",
+            foreground="#fff",
+            background="black",
+            font=('bold', 25),
+            width=25
+        )
+        label_search.pack(pady=10)
+
+        search_ent = tk.Entry(frm_search, font=25, width=30)
+        search_ent.pack(pady=10)
+
+        def search_name():
+            search_val = search_ent.get()
+            search_results = tk.Toplevel(search_window)
+            search_results.title("نتایج جستجو")
+            search_results.geometry('600x400')
+            search_results.configure(bg="#444444")
+
+            tree = ttk.Treeview(search_results, columns=("column1", "column2"), show='headings')
+            tree.heading("column1", text="کد")
+            tree.heading("column2", text="نام")
+
+            mycursor.execute(f"SELECT ID_key,first_name FROM tel_book.insert_v WHERE first_name ='{search_val}'")
+            rows = mycursor.fetchall()
+            for row in rows:
+                tree.insert("", "end", values=row)
+            tree.pack(fill=tk.BOTH, expand=True)
+
+            v_scrollbar = ttk.Scrollbar(search_results, orient=tk.VERTICAL, command=tree.yview)
+            tree.config(yscroll=v_scrollbar.set)
+            v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+            h_scrollbar = ttk.Scrollbar(search_results, orient=tk.HORIZONTAL, command=tree.xview)
+            tree.config(xscroll=h_scrollbar.set)
+            h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+            tree.pack(fill=tk.BOTH, expand=True)
+
+            def on_tree_select(event):
+                selected_item = tree.selection()[0]
+                item_id = tree.item(selected_item)['values'][0]
+
+                details_window = tk.Toplevel(search_results)
+                details_window.title("اطلاعات کامل")
+                details_window.geometry('600x400')
+                details_window.configure(bg="#444444")
+
+                details_tree = ttk.Treeview(details_window, columns=(
+                    "column1", "column2", "column3", "column4", "column5", "column6", "column7", "column8", "column9", "column10", "column11", "column12", "column13"), show='headings')
+                details_tree.heading("column1", text="کد")
+                details_tree.heading("column2", text="نام")
+                details_tree.heading("column3", text="نام خانوادگی")
+                details_tree.heading("column4", text="شماره تلفن")
+                details_tree.heading("column5", text="ایمیل")
+                details_tree.heading("column6", text="عکس")
+                details_tree.heading("column7", text="نام سازمان")
+                details_tree.heading("column8", text="شماره سازمان")
+                details_tree.heading("column9", text="محل سازمان")
+                details_tree.heading("column10", text="ایمیل سازمان")
+                details_tree.heading("column11", text="سایت سازمان")
+                details_tree.heading("column12", text="شماره داخلی")
+                details_tree.heading("column13", text="مدیر شرکت")
+
+                mycursor.execute(f"""
+                    SELECT * FROM insert_v,company
+                    WHERE insert_v.ID_key = {item_id}
+                """)
+                details_rows = mycursor.fetchall()
+                for details_row in details_rows:
+                    details_tree.insert("", "end", values=details_row)
+                details_tree.pack(fill=tk.BOTH, expand=True)
+
+                v_scrollbar_details = ttk.Scrollbar(details_window, orient=tk.VERTICAL, command=details_tree.yview)
+                details_tree.config(yscroll=v_scrollbar_details.set)
+                v_scrollbar_details.pack(side=tk.RIGHT, fill=tk.Y)
+
+                h_scrollbar_details = ttk.Scrollbar(details_window, orient=tk.HORIZONTAL, command=details_tree.xview)
+                details_tree.config(xscroll=h_scrollbar_details.set)
+                h_scrollbar_details.pack(side=tk.BOTTOM, fill=tk.X)
+
+                details_tree.pack(fill=tk.BOTH, expand=True)
+
+            tree.bind("<<TreeviewSelect>>", on_tree_select)
+
+        search_btn = tk.Button(frm_search, text="جستجو", command=search_name, bg="#007acc", fg="white", font=('bold', 12))
+        search_btn.pack(pady=10)
+
+# دکمه‌های عملیات
+btn_insert = tk.Button(frm_insert, text="ثبت", command=Operation.insert, bg="#28a141", fg="white", font=('bold', 12))
+btn_insert.pack(pady=10)
+
+btn_show = tk.Button(frm_comp, text="نمایش اطلاعات", command=Operation.show_data, bg="#17a2b8", fg="white", font=('bold', 12))
+btn_show.pack(pady=10)
+
+btn_search = tk.Button(frm_comp, text="جستجو", command=Operation.search, bg="#ffc107", fg="black", font=('bold', 12))
+btn_search.pack(pady=10)
+
+# افزودن فریم‌ها به پنجره اصلی
+frm_all.pack(fill="both", expand=True, padx=10, pady=10)
+frm_insert.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+frm_comp.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+
+# نمایش برنامه
+win.mainloop()
